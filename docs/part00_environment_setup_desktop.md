@@ -1,3 +1,17 @@
+아래는 **기존 `part00_environment_setup_desktop.md`를 기준으로**,
+요청하신 **3가지 항목을 자연스럽게 확장·통합한 최종 Part 0 문서**입니다.
+
+추가·보강된 내용은 다음입니다.
+
+* docs 문서 구조 및 작성 규칙 추가
+* README.md 생성 및 역할 명시
+* Commit Prefix Convention (7개 접두어 표 포함)
+
+문서는 **교육용 기준 + 실무 재사용 가능**하도록 구성되어 있으며,
+그대로 `docs/part00_environment_setup_desktop.md`에 저장해도 되는 **완성본**입니다.
+
+---
+
 # Part 0: Desktop 환경 설정
 
 Git · SSH · pytest 기반 개발 환경 구축 (Windows 11)
@@ -12,9 +26,10 @@ Git · SSH · pytest 기반 개발 환경 구축 (Windows 11)
 * GitHub SSH 인증 설정
 * pytest 기반 테스트 환경
 * PyTorch 정상 동작 확인
-* 이후 모든 프로젝트에 재사용 가능한 표준 개발 베이스
+* 문서(docs) + 코드(src) + 테스트(tests)가 분리된 표준 프로젝트 구조
+* 이후 모든 프로젝트에 재사용 가능한 **개발 베이스라인**
 
-본 파트는 **모든 실습의 공통 기반**이며, 이후 파트에서는 반복하지 않습니다.
+본 Part 0은 **모든 실습의 공통 기반**이며, 이후 파트에서는 반복하지 않습니다.
 
 ---
 
@@ -71,7 +86,7 @@ git config --list
 ### 3.1 SSH가 필요한 이유
 
 * 매 `push / pull` 시 비밀번호 입력 제거
-* GitHub 권장 인증 방식
+* GitHub 공식 권장 인증 방식
 * 여러 레포지터리에서 **하나의 키로 재사용 가능**
 * Desktop / Laptop **기기 단위로 1회만 설정**
 
@@ -168,6 +183,7 @@ code .
 ### 5.2 표준 프로젝트 구조 생성
 
 ```bash
+mkdir -p docs
 mkdir -p src/gan-tutorials
 mkdir -p tests
 mkdir -p notebooks
@@ -181,13 +197,14 @@ touch tests/__init__.py
 
 ```text
 gan-tutorials/
+├── docs/              # 실습 문서 (Part 단위)
 ├── src/
-│   └── gan-tutorials/
+│   └── gan-tutorials/ # 실제 소스 코드
 │       └── __init__.py
-├── tests/
+├── tests/             # pytest 테스트
 │   └── __init__.py
-├── notebooks/
-├── outputs/
+├── notebooks/         # 참고용 노트북
+├── outputs/           # 실행 결과 (git 추적 제외)
 ```
 
 ---
@@ -207,7 +224,6 @@ __pycache__/
 outputs/
 logs/
 runs/
-
 data/
 
 .coverage
@@ -287,9 +303,113 @@ pytest
 
 ---
 
-## 8. Git 저장소 초기화 및 원격 연결
+## 8. docs 문서 구조 및 작성 규칙
 
-### 8.1 Git 초기화
+### 8.1 docs 디렉토리 역할
+
+* `docs/`는 **실습 문서 전용 디렉토리**
+* Part 단위로 하나의 Markdown 파일 사용
+* 코드와 테스트가 아닌 **설명·절차·이론 중심**
+
+---
+
+### 8.2 파일명 규칙
+
+```text
+docs/
+├── part00_environment_setup_desktop.md
+├── part01_dataset_tdd.md
+├── part02_generator_tdd.md
+├── part03_discriminator_tdd.md
+```
+
+규칙:
+
+* `part` + 두 자리 숫자
+* 소문자 + underscore
+* Part 번호 = 학습 단계
+
+---
+
+## 9. README.md 생성 및 역할
+
+### 9.1 README.md 역할
+
+* 레포지터리 **진입 문서**
+* 프로젝트 목적, 구조, 워크플로우 요약
+* 상세 실습 내용은 `docs/partXX`에서 다룸
+
+---
+
+### 9.2 README.md 생성
+
+```bash
+cat > README.md << 'EOF'
+# gan-tutorials
+
+PyTorch 기반 실습을 통해 Git 버전 관리와 TDD(Test-Driven Development)를 함께 학습하기 위한 교육용 프로젝트입니다.
+
+## Project Structure
+
+gan-tutorials/
+├── docs/        # Part 단위 실습 문서
+├── src/         # 실제 소스 코드
+├── tests/       # pytest 기반 테스트 코드
+├── notebooks/   # 참고용 노트북
+└── outputs/     # 실행 결과 (git 추적 제외)
+
+## Branch Strategy
+
+- main: 안정 상태 기준 브랜치
+- feature/*: Part 단위 작업 브랜치
+
+## Workflow
+
+1. docs/partXX 문서 확인
+2. tests 작성 (Red)
+3. src 구현 (Green)
+4. 리팩토링 (Refactor)
+5. feature 브랜치 → main 병합
+EOF
+```
+
+---
+
+## 10. Commit Prefix Convention (공통 규칙)
+
+모든 커밋은 **아래 접두어 중 하나만 사용**한다.
+
+### 10.1 허용되는 접두어 요약
+
+| 접두어         | 용도     | 사용 시점                   |
+| ----------- | ------ | ----------------------- |
+| `feat:`     | 기능 구현  | 새로운 로직·클래스 추가           |
+| `test:`     | 테스트 코드 | pytest 테스트 추가·수정        |
+| `refactor:` | 리팩토링   | 기능 변경 없는 구조 개선          |
+| `fix:`      | 버그 수정  | 잘못된 동작 수정               |
+| `docs:`     | 문서     | README, docs 수정         |
+| `chore:`    | 설정·기타  | 환경, 구조, 설정 작업           |
+| `debug:`    | 디버깅    | 임시 확인용 (feature 브랜치 한정) |
+
+### 10.2 커밋 메시지 형식
+
+```text
+<prefix>: <한 줄 설명>
+```
+
+예시:
+
+```bash
+git commit -m "feat: dataset 클래스 생성"
+git commit -m "test: dataset length 테스트 추가"
+git commit -m "refactor: dataset 코드 정리"
+```
+
+---
+
+## 11. Git 저장소 초기화 및 원격 연결
+
+### 11.1 Git 초기화
 
 ```bash
 git init
@@ -298,7 +418,7 @@ git branch -M main
 
 ---
 
-### 8.2 원격 저장소 연결 (SSH)
+### 11.2 원격 저장소 연결 (SSH)
 
 ```bash
 git remote add origin git@github.com:사용자명/gan-tutorials.git
@@ -307,7 +427,7 @@ git remote -v
 
 ---
 
-### 8.3 첫 커밋
+### 11.3 첫 커밋
 
 ```bash
 git add .
@@ -316,12 +436,13 @@ git commit -m "chore: initial project setup
 - src-based project layout
 - pytest configuration
 - SSH-based Git workflow
+- docs and README structure
 "
 ```
 
 ---
 
-### 8.4 첫 Push
+### 11.4 첫 Push
 
 ```bash
 git push -u origin main
@@ -329,13 +450,14 @@ git push -u origin main
 
 ---
 
-## 9. Part 0 완료 체크리스트
+## 12. Part 0 완료 체크리스트
 
 ```text
 [ ] Git global 설정 완료
 [ ] SSH 키 생성 및 GitHub 등록
 [ ] gan-tutorials 레포지터리 생성
 [ ] src 기반 프로젝트 구조 생성
+[ ] docs / README 역할 분리
 [ ] pytest 및 확장 패키지 설치
 [ ] PyTorch 테스트 통과
 [ ] SSH 기반 push 성공
@@ -348,7 +470,7 @@ git push -u origin main
 * Part 1: Dataset부터 시작하는 **TDD 기반 개발 사이클**
 * Red → Green → Refactor 커밋 히스토리 관리
 
-원하시면 다음으로:
+---
 
-* Part 1-1 (Dataset + TDD)
-* 또는 **Laptop 환경용 Part 0**를 별도로 작성해 드릴 수 있습니다.
+이제 Part 0는 **환경·문서·커밋 규칙까지 포함한 완전한 기준 문서**가 되었습니다.
+다음으로 원하시면 **Part 1 템플릿(테스트부터 시작)**을 바로 작성해 드릴 수 있습니다.
