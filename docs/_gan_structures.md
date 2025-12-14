@@ -1,3 +1,11 @@
+### 조건이 강해질수록 latent_dim은 작아지는 것이 자연스러운 설계
+
+- GAN    : latent_dim = 100
+- CGAN   : latent_dim = 64
+- ACGAN  : latent_dim = 32 or 64
+- InfoGAN: latent_dim = 62
+
+
 ```
 src/gan_tutorials/
 ├── __init__.py

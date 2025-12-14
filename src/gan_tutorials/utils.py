@@ -27,14 +27,18 @@ def sample_labels(num_samples, num_classes):
 
 
 @torch.no_grad()
-def create_images(generator, noises, labels=None):
+def create_images(generator, noises, labels=None, codes_discrete=None, codes_continuous=None):
     training = generator.training
     generator.eval()
 
     device = next(generator.parameters()).device
-    noises = torch.tensor(noises).float().to(device)
+    noises = torch.as_tensor(noises).float().to(device)
 
-    if labels is not None:
+    if codes_discrete is not None:
+        codes_discrete = torch.as_tensor(codes_discrete).long().to(device)
+        codes_continuous = torch.as_tensor(codes_continuous).float().to(device)
+        outputs = generator(noises, codes_discrete, codes_continuous)
+    elif labels is not None:
         labels = torch.tensor(labels).long().to(device)
         outputs = generator(noises, labels)
     else:

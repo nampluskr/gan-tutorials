@@ -28,7 +28,7 @@ if __name__ == "__main__":
     train_loader = get_train_loader(dataset, batch_size=BATCH_SIZE)
 
     IMG_SIZE = 32
-    LATENT_DIM = 128
+    LATENT_DIM = 64
     IN_CHANNELS = 1
     OUT_CHANNELS = 1
     BASE = 64
@@ -54,8 +54,8 @@ if __name__ == "__main__":
     )
     gan = CGAN(generator, discriminator, loss_type="bce")
 
-    NUM_EPOCHS = 2
-    TOTAL_EPOCHS = 10
+    NUM_EPOCHS = 5
+    TOTAL_EPOCHS = 20
     NUM_SAMPLES = 100
 
     FILENAME = os.path.splitext(os.path.basename(__file__))[0]

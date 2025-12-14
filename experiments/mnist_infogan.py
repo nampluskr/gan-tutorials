@@ -2,7 +2,7 @@ import os
 import sys
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.abspath(os.path.join(CURRENT_DIR, "..")) 
+ROOT_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 SRC_DIR = os.path.abspath(os.path.join(ROOT_DIR, "src"))
 
 if SRC_DIR not in sys.path:
@@ -13,7 +13,7 @@ import torchvision.transforms as T
 
 from gan_tutorials.datasets import MNIST, get_train_loader
 from gan_tutorials.utils import set_seed, create_images, sample_latent, update_history, plot_images
-from gan_tutorials.models.gan import Generator, Discriminator, GAN
+from gan_tutorials.models.infogan import InfoGenerator, InfoDiscriminator, InfoGAN
 from gan_tutorials.trainer import fit
 
 
@@ -33,18 +33,26 @@ if __name__ == "__main__":
     OUT_CHANNELS = 1
     BASE = 64
 
-    generator = Generator(
+    NUM_DISCRETE = 10
+    NUM_CONTINUOUS = 2
+
+    generator = InfoGenerator(
         img_size=IMG_SIZE,
         latent_dim=LATENT_DIM,
         out_channels=OUT_CHANNELS,
         base=BASE,
+        num_discrete=NUM_DISCRETE,
+        num_continuous=NUM_CONTINUOUS,
     )
-    discriminator = Discriminator(
+    discriminator = InfoDiscriminator(
         img_size=IMG_SIZE,
         in_channels=IN_CHANNELS,
         base=BASE,
+        num_discrete=NUM_DISCRETE,
+        num_continuous=NUM_CONTINUOUS,
     )
-    gan = GAN(generator, discriminator, loss_type="bce")
+    gan = InfoGAN(generator, discriminator, latent_dim=LATENT_DIM,
+        num_discrete=NUM_DISCRETE, num_continuous=NUM_CONTINUOUS)
 
     NUM_EPOCHS = 5
     TOTAL_EPOCHS = 20
@@ -55,6 +63,9 @@ if __name__ == "__main__":
     IMAGE_NAME = FILENAME + ""
 
     noises = sample_latent(NUM_SAMPLES, LATENT_DIM)
+    codes_discrete = torch.arange(NUM_DISCRETE, dtype=torch.long).repeat(NUM_SAMPLES // NUM_DISCRETE)
+    codes_continuous = torch.zeros(NUM_SAMPLES, NUM_CONTINUOUS)
+
     history = {}
     epoch = 0
 
@@ -62,7 +73,8 @@ if __name__ == "__main__":
         epoch_history = fit(gan, train_loader, num_epochs=NUM_EPOCHS, total_epochs=TOTAL_EPOCHS)
         update_history(history, epoch_history)
 
-        images = create_images(gan.generator, noises)
+        images = create_images(gan.generator, noises, 
+            codes_discrete=codes_discrete, codes_continuous=codes_continuous)
         epoch = gan.global_epoch
         image_path = os.path.join(OUTPUT_DIR, f"{IMAGE_NAME}_epoch{epoch:03d}.png")
         plot_images(*images, ncols=10, save_path=image_path)

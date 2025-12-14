@@ -51,13 +51,13 @@ def evaluate(model, dataloader):
 def fit(model, train_loader, num_epochs, total_epochs=None, valid_loader=None):
     history = {"train": {}, "valid": {}}
     for epoch in range(1, num_epochs + 1):
+        train_results = train(model, train_loader)
+        train_info = ", ".join([f"{k}:{v:.3f}" for k, v in train_results.items()])
+
         if hasattr(model, 'global_epoch') and total_epochs is not None:
             epoch_info = f"[{model.global_epoch:3d}/{total_epochs}]"
         else:
             epoch_info = f"[{epoch:3d}/{num_epochs}]"
-
-        train_results = train(model, train_loader)
-        train_info = ", ".join([f"{k}:{v:.3f}" for k, v in train_results.items()])
 
         for name, value in train_results.items():
             history["train"].setdefault(name, [])
