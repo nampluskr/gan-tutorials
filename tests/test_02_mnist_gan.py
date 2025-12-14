@@ -4,7 +4,7 @@ import torch
 import pytest
 
 from gan_tutorials.datasets import MNIST, get_train_loader
-from gan_tutorials.gan import Generator, Discriminator, GAN
+from gan_tutorials.models.gan import Generator, Discriminator, GAN
 from gan_tutorials.trainer import train, evaluate, fit
 from gan_tutorials.utils import sample_latent, create_images
 

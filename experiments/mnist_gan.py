@@ -13,7 +13,7 @@ import torchvision.transforms as T
 
 from gan_tutorials.datasets import MNIST, get_train_loader
 from gan_tutorials.utils import set_seed, create_images, sample_latent, update_history, plot_images
-from gan_tutorials.gan import Generator, Discriminator, GAN
+from gan_tutorials.models.gan import Generator, Discriminator, GAN
 from gan_tutorials.trainer import fit
 
 
