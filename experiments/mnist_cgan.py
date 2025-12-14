@@ -12,8 +12,8 @@ import torch
 import torchvision.transforms as T
 
 from gan_tutorials.datasets import MNIST, get_train_loader
-from gan_tutorials.utils import set_seed, create_images, sample_latent, update_history, plot_images
-from gan_tutorials.models.gan import Generator, Discriminator, GAN
+from gan_tutorials.utils import set_seed, create_images, sample_latent, sample_labels, update_history, plot_images
+from gan_tutorials.models.cgan import CGenerator, CDiscriminator, CGAN
 from gan_tutorials.trainer import fit
 
 
@@ -33,18 +33,26 @@ if __name__ == "__main__":
     OUT_CHANNELS = 1
     BASE = 64
 
-    generator = Generator(
+    NUM_CLASSES = 10
+    EMBEDDING_DIM = 10
+    EMBEDDING_CHANNELS = 1
+
+    generator = CGenerator(
         img_size=IMG_SIZE,
         latent_dim=LATENT_DIM,
         out_channels=OUT_CHANNELS,
         base=BASE,
+        num_classes=NUM_CLASSES,
+        embedding_dim=EMBEDDING_DIM,
     )
-    discriminator = Discriminator(
+    discriminator = CDiscriminator(
         img_size=IMG_SIZE,
         in_channels=IN_CHANNELS,
         base=BASE,
+        num_classes=NUM_CLASSES,
+        embedding_channels=EMBEDDING_CHANNELS,
     )
-    gan = GAN(generator, discriminator, loss_type="bce")
+    gan = CGAN(generator, discriminator, loss_type="bce")
 
     NUM_EPOCHS = 2
     TOTAL_EPOCHS = 10
@@ -55,6 +63,7 @@ if __name__ == "__main__":
     IMAGE_NAME = FILENAME + ""
 
     noises = sample_latent(NUM_SAMPLES, LATENT_DIM)
+    labels = sample_labels(NUM_SAMPLES, NUM_CLASSES)
     history = {}
     epoch = 0
 
@@ -62,7 +71,7 @@ if __name__ == "__main__":
         epoch_history = fit(gan, train_loader, num_epochs=NUM_EPOCHS, total_epochs=TOTAL_EPOCHS)
         update_history(history, epoch_history)
 
-        images = create_images(gan.generator, noises)
+        images = create_images(gan.generator, noises, labels=labels)
         epoch = gan.global_epoch
         image_path = os.path.join(OUTPUT_DIR, f"{IMAGE_NAME}_epoch{epoch:03d}.png")
         plot_images(*images, ncols=10, save_path=image_path)
