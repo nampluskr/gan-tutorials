@@ -22,7 +22,7 @@ NUM_SAMPLES = 100
 
 
 @pytest.mark.mnist_gan
-def test_mnist_dataloader_batch_shape():
+def test_mnist_dataloader_images_valid():
     dataset = MNIST(DATA_DIR, split="train")
     train_loader = get_train_loader(dataset, batch_size=BATCH_SIZE)
     batch = next(iter(train_loader))

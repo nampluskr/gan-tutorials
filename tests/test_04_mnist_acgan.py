@@ -4,7 +4,7 @@ import torch
 import pytest
 
 from gan_tutorials.datasets import MNIST, get_train_loader
-from gan_tutorials.models.cgan import CGenerator, CDiscriminator, CGAN
+from gan_tutorials.models.acgan import ACGenerator, ACDiscriminator, ACGAN
 from gan_tutorials.trainer import train, evaluate, fit
 from gan_tutorials.utils import sample_latent, sample_labels, create_images
 
@@ -25,7 +25,7 @@ NUM_EPOCHS = 2
 NUM_SAMPLES = 100
 
 
-@pytest.mark.mnist_cgan
+@pytest.mark.mnist_acgan
 def test_mnist_dataloader_images_valid():
     dataset = MNIST(DATA_DIR, split="train")
     train_loader = get_train_loader(dataset, batch_size=BATCH_SIZE)
@@ -36,7 +36,7 @@ def test_mnist_dataloader_images_valid():
     assert images.shape == (BATCH_SIZE, IN_CHANNELS, IMG_SIZE, IMG_SIZE)
 
 
-@pytest.mark.mnist_cgan
+@pytest.mark.mnist_acgan
 def test_mnist_dataloader_labels_valid():
     dataset = MNIST(DATA_DIR, split="train")
     train_loader = get_train_loader(dataset, batch_size=BATCH_SIZE)
@@ -47,9 +47,9 @@ def test_mnist_dataloader_labels_valid():
     assert labels.shape == (BATCH_SIZE, )
 
 
-@pytest.mark.mnist_cgan
-def test_mnist_cgan_generator_forward():
-    generator = CGenerator(
+@pytest.mark.mnist_acgan
+def test_mnist_acgan_generator_forward():
+    generator = ACGenerator(
         img_size=IMG_SIZE,
         latent_dim=LATENT_DIM,
         out_channels=OUT_CHANNELS,
@@ -73,32 +73,32 @@ def test_mnist_cgan_generator_forward():
     assert images.max() <= 1.0
 
 
-@pytest.mark.mnist_cgan
-def test_mnist_cgan_discriminator_forward():
-    discriminator = CDiscriminator(
+@pytest.mark.mnist_acgan
+def test_mnist_acgan_discriminator_forward():
+    discriminator = ACDiscriminator(
         img_size=IMG_SIZE,
         in_channels=IN_CHANNELS,
         base=BASE,
         num_classes=NUM_CLASSES,
-        embedding_channels=EMBEDDING_CHANNELS,
     )
     images = torch.randn(BATCH_SIZE, IN_CHANNELS, IMG_SIZE, IMG_SIZE).float()
-    labels = torch.arange(NUM_CLASSES).repeat(BATCH_SIZE // NUM_CLASSES).long()
-    logits = discriminator(images, labels)
+    adv_logits, aux_logits = discriminator(images)
 
     print()
-    print(f"{images.shape}")
-    print(f"{labels.shape}")
-    print(f"{logits.shape}")
+    print(f">> images: {images.shape}")
+    print(f">> adv_logits: {adv_logits.shape}")
+    print(f">> aux_logits: {aux_logits.shape}")
 
     assert discriminator is not None
-    assert logits.ndim == 2
-    assert logits.shape == (BATCH_SIZE, 1)
+    assert adv_logits.ndim == 2
+    assert adv_logits.shape == (BATCH_SIZE, 1)
+    assert aux_logits.ndim == 2
+    assert aux_logits.shape == (BATCH_SIZE, 10)
 
 
-@pytest.mark.mnist_cgan
-def test_mnist_cgan_train_one_batch():
-    generator = CGenerator(
+@pytest.mark.mnist_acgan
+def test_mnist_acgan_train_one_batch():
+    generator = ACGenerator(
         img_size=IMG_SIZE,
         latent_dim=LATENT_DIM,
         out_channels=OUT_CHANNELS,
@@ -106,14 +106,13 @@ def test_mnist_cgan_train_one_batch():
         num_classes=NUM_CLASSES,
         embedding_dim=EMBEDDING_DIM,
     )
-    discriminator = CDiscriminator(
+    discriminator = ACDiscriminator(
         img_size=IMG_SIZE,
         in_channels=IN_CHANNELS,
         base=BASE,
         num_classes=NUM_CLASSES,
-        embedding_channels=EMBEDDING_CHANNELS,
     )
-    gan = CGAN(generator, discriminator)
+    gan = ACGAN(generator, discriminator)
     batch = {
         "image": torch.randn(BATCH_SIZE, IN_CHANNELS, IMG_SIZE, IMG_SIZE).float(),
         "label": torch.arange(NUM_CLASSES).repeat(BATCH_SIZE // NUM_CLASSES).long(),
@@ -127,11 +126,11 @@ def test_mnist_cgan_train_one_batch():
     assert "g_loss" in outputs
 
 
-@pytest.mark.mnist_cgan
-def test_mnist_cgan_train_one_epoch():
+@pytest.mark.mnist_acgan
+def test_mnist_acgan_train_one_epoch():
     dataset = MNIST(DATA_DIR, split="train")
     train_loader = get_train_loader(dataset, batch_size=BATCH_SIZE)
-    generator = CGenerator(
+    generator = ACGenerator(
         img_size=IMG_SIZE,
         latent_dim=LATENT_DIM,
         out_channels=OUT_CHANNELS,
@@ -139,25 +138,24 @@ def test_mnist_cgan_train_one_epoch():
         num_classes=NUM_CLASSES,
         embedding_dim=EMBEDDING_DIM,
     )
-    discriminator = CDiscriminator(
+    discriminator = ACDiscriminator(
         img_size=IMG_SIZE,
         in_channels=IN_CHANNELS,
         base=BASE,
         num_classes=NUM_CLASSES,
-        embedding_channels=EMBEDDING_CHANNELS,
     )
-    gan = CGAN(generator, discriminator)
+    gan = ACGAN(generator, discriminator)
     results = train(gan, train_loader)
 
     assert isinstance(results, dict)
     assert gan.global_epoch == 1
 
 
-@pytest.mark.mnist_cgan
-def test_mnist_cgan_train_num_epoch():
+@pytest.mark.mnist_acgan
+def test_mnist_acgan_train_num_epoch():
     dataset = MNIST(DATA_DIR, split="train")
     train_loader = get_train_loader(dataset, batch_size=BATCH_SIZE)
-    generator = CGenerator(
+    generator = ACGenerator(
         img_size=IMG_SIZE,
         latent_dim=LATENT_DIM,
         out_channels=OUT_CHANNELS,
@@ -165,23 +163,22 @@ def test_mnist_cgan_train_num_epoch():
         num_classes=NUM_CLASSES,
         embedding_dim=EMBEDDING_DIM,
     )
-    discriminator = CDiscriminator(
+    discriminator = ACDiscriminator(
         img_size=IMG_SIZE,
         in_channels=IN_CHANNELS,
         base=BASE,
         num_classes=NUM_CLASSES,
-        embedding_channels=EMBEDDING_CHANNELS,
     )
-    gan = CGAN(generator, discriminator)
+    gan = ACGAN(generator, discriminator)
     results = fit(gan, train_loader, num_epochs=NUM_EPOCHS)
 
     assert isinstance(results, dict)
     assert gan.global_epoch == NUM_EPOCHS
 
 
-@pytest.mark.mnist_cgan
-def test_mnist_cgan_create_images():
-    generator = CGenerator(
+@pytest.mark.mnist_acgan
+def test_mnist_acgan_create_images():
+    generator = ACGenerator(
         img_size=IMG_SIZE,
         latent_dim=LATENT_DIM,
         out_channels=OUT_CHANNELS,

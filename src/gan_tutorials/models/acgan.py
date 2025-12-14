@@ -12,8 +12,8 @@ from .gan import GAN
 # Generator
 #####################################################################
 
-class CGenerator(nn.Module):
-    def __init__(self, img_size=32, latent_dim=128, out_channels=3, base=64,
+class ACGenerator(nn.Module):
+    def __init__(self, img_size=32, latent_dim=128, out_channels=3, base=64, 
                  num_classes=10, embedding_dim=64):
         super().__init__()
         self.latent_dim = latent_dim
@@ -67,13 +67,11 @@ class CGenerator(nn.Module):
 # Discriminator
 #####################################################################
 
-class CDiscriminator(nn.Module):
-    def __init__(self, img_size=32, in_channels=3, base=64,
-                 num_classes=10, embedding_channels=1):
+class ACDiscriminator(nn.Module):
+    def __init__(self, img_size=32, in_channels=3, base=64, num_classes=10):
         super().__init__()
         self.img_size = img_size
-        self.embedding_channels = embedding_channels
-        self.labels_embedding = nn.Embedding(num_classes, embedding_channels)
+        self.num_classes = num_classes
 
         num_blocks = {32: 2, 64: 3, 128: 4, 256: 5}
         if img_size not in num_blocks:
@@ -81,17 +79,19 @@ class CDiscriminator(nn.Module):
 
         out_channels = base
         self.initial = nn.Sequential(
-            nn.Conv2d(in_channels + embedding_channels, out_channels,
-                     kernel_size=4, stride=2, padding=1, bias=False),
+            nn.Conv2d(in_channels, out_channels, kernel_size=4, stride=2, padding=1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
         )
+
         blocks = []
         for i in range(num_blocks[img_size]):
             blocks.append(ConvBlock(out_channels, out_channels * 2))
-            out_channels *= 2
+            out_channels = out_channels * 2
         self.blocks = nn.Sequential(*blocks)
 
-        self.final = nn.Conv2d(out_channels, 1, kernel_size=4, stride=1, padding=0, bias=False)
+        self.adv_head = nn.Conv2d(out_channels, 1, kernel_size=4, stride=1, padding=0, bias=False)
+        self.aux_head = nn.Conv2d(out_channels, num_classes, kernel_size=4, stride=1, padding=0, bias=False)
+
         self.apply(self.init_weights)
 
     def init_weights(self, m):
@@ -103,56 +103,62 @@ class CDiscriminator(nn.Module):
             nn.init.ones_(m.weight)
             nn.init.zeros_(m.bias)
 
-    def forward(self, images, labels):
-        # images: (B, C, H, W), labels: (B,)
-        h, w = images.size(-2), images.size(-1)
-        labels = self.labels_embedding(labels)                  # (B, embedding_channels)
-        labels = labels.view(-1, self.embedding_channels, 1, 1) # (B, embedding_channels, 1, 1)
-        labels = labels.expand(-1, -1, h, w)                    # (B, embedding_channels, H, W)
-        x = torch.cat([images, labels], dim=1)                  # (B, in_channels + embedding_channels, H, W)
-
-        x = self.initial(x)
+    def forward(self, images):
+        x = self.initial(images)
         x = self.blocks(x)
-        logits = self.final(x).view(-1, 1)
-        return logits
+
+        adv_logits = self.adv_head(x).view(-1, 1)
+        aux_logits = self.aux_head(x).view(-1, self.num_classes)
+        return adv_logits, aux_logits
 
 
 #####################################################################
 # Loss functions for GAN
 #####################################################################
 
-class CGAN(GAN):
+class ACGAN(GAN):
+    def d_aux_loss_fn(self, real_aux, fake_aux, labels):
+        d_real_aux_loss = F.cross_entropy(real_aux, labels)
+        d_fake_aux_loss = F.cross_entropy(fake_aux, labels)
+        return d_real_aux_loss, d_fake_aux_loss
+
+    def g_aux_loss_fn(self, fake_aux, labels):
+        return F.cross_entropy(fake_aux, labels)
+
     def train_step(self, batch):
-        batch_size = batch["image"].size(0)
+        images = batch["image"].to(self.device)
         labels = batch["label"].to(self.device)
+        batch_size = images.size(0)
 
         # (1) Update Discriminator
-        real_images = batch["image"].to(self.device)
-        real_logits = self.discriminator(real_images, labels)
-
+        real_logits, real_aux = self.discriminator(images)
+        
         noises = torch.randn(batch_size, self.latent_dim, 1, 1).to(self.device)
         fake_images = self.generator(noises, labels).detach()
-        fake_logits = self.discriminator(fake_images, labels)
+        fake_logits, fake_aux = self.discriminator(fake_images)
 
         d_loss, d_real_loss, d_fake_loss = self.d_loss_fn(real_logits, fake_logits)
+        d_real_aux_loss, d_fake_aux_loss = self.d_aux_loss_fn(real_aux, fake_aux, labels)
+        total_d_loss = d_loss + d_real_aux_loss + d_fake_aux_loss
 
         self.d_optimizer.zero_grad()
-        d_loss.backward()
+        total_d_loss.backward()
         self.d_optimizer.step()
 
         # (2) Update Generator
         noises = torch.randn(batch_size, self.latent_dim, 1, 1).to(self.device)
         fake_images = self.generator(noises, labels)
-        fake_logits = self.discriminator(fake_images, labels)
-        g_loss = self.g_loss_fn(fake_logits)
+        fake_logits, fake_aux = self.discriminator(fake_images)
+        
+        g_loss = self.g_loss_fn(fake_logits) + self.g_aux_loss_fn(fake_aux, labels)
 
         self.g_optimizer.zero_grad()
         g_loss.backward()
         self.g_optimizer.step()
 
         return dict(
-            d_loss=d_loss.item(),
-            real_loss=d_real_loss.item(),
-            fake_loss=d_fake_loss.item(),
-            g_loss=g_loss.item()
+            d_loss=d_loss.detach().cpu().item(),
+            real_loss=d_real_loss.detach().cpu().item(),
+            fake_loss=d_fake_loss.detach().cpu().item(),
+            g_loss=g_loss.detach().cpu().item(),
         )
